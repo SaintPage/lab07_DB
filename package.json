@@ -1,0 +1,24 @@
+{
+  "name": "lab07_db",
+  "version": "1.0.0",
+  "description": "",
+  "main": "eje1.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SaintPage/lab07_DB.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SaintPage/lab07_DB/issues"
+  },
+  "homepage": "https://github.com/SaintPage/lab07_DB#readme",
+  "dependencies": {
+    "neo4j-driver": "^6.0.1"
+  }
+}
