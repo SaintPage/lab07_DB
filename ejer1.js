@@ -25,7 +25,7 @@ async function createConstraints() {
   }
 }
 
-// Función para crear un usuario
+// Crear usuario
 async function createUser(userid, name) {
   const session = driver.session();
   try {
@@ -43,7 +43,7 @@ async function createUser(userid, name) {
   }
 }
 
-// Función para crear una película
+// Crear película
 async function createMovie(movieid, title, year) {
   const session = driver.session();
   try {
@@ -82,7 +82,78 @@ async function createRated(userid, movieid, rating, timestamp) {
   }
 }
 
-// Función para crear la relación RATED
+// Buscar usuario
+async function getUser(userid) {
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {userid: $userid})
+      RETURN u
+      `,
+      { userid }
+    );
+
+    console.log("\nUsuario encontrado:");
+    result.records.forEach(record => {
+      console.log(record.get("u").properties);
+    });
+  } finally {
+    await session.close();
+  }
+}
+
+// Buscar película
+async function getMovie(movieid) {
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (m:Movie {movieid: $movieid})
+      RETURN m
+      `,
+      { movieid }
+    );
+
+    console.log("\nPelícula encontrada:");
+    result.records.forEach(record => {
+      console.log(record.get("m").properties);
+    });
+  } finally {
+    await session.close();
+  }
+}
+
+// Buscar usuario con sus ratings
+async function getUserRatings(userid) {
+  const session = driver.session();
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {userid: $userid})-[r:RATED]->(m:Movie)
+      RETURN u, r, m
+      `,
+      { userid }
+    );
+
+    console.log("\nRatings del usuario:");
+
+    result.records.forEach(record => {
+      const user = record.get("u").properties;
+      const movie = record.get("m").properties;
+      const rating = record.get("r").properties;
+
+      console.log({
+        user,
+        movie,
+        rating
+      });
+    });
+  } finally {
+    await session.close();
+  }
+}
+
 async function main() {
   try {
     await createConstraints();
@@ -103,28 +174,31 @@ async function main() {
 
     const now = Date.now();
 
-
-    // Ana
+    // Relaciones
     await createRated(1, 101, 5, now);
     await createRated(1, 102, 4, now);
 
-    // Luis
     await createRated(2, 101, 4, now);
     await createRated(2, 103, 5, now);
 
-    // Carlos
     await createRated(3, 102, 5, now);
     await createRated(3, 104, 3, now);
 
-    // María
     await createRated(4, 103, 4, now);
     await createRated(4, 105, 5, now);
 
-    // Sofía
     await createRated(5, 104, 5, now);
     await createRated(5, 101, 4, now);
 
-    console.log("Grafo poblado correctamente");
+    console.log("\nGrafo poblado correctamente");
+
+    // Pruebas rápidas de la búsqueda
+    console.log("\n--- PRUEBAS DE BÚSQUEDA ---");
+
+    await getUser(1);
+    await getMovie(101);
+    await getUserRatings(1);
+
   } catch (error) {
     console.error("Error:", error);
   } finally {
