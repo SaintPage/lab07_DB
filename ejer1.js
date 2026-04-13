@@ -6,92 +6,225 @@ const PASSWORD = "NergiZ62YSAc1YXP52oSdqPcbw6prdQRPkAaKxFfOkU";
 
 const driver = neo4j.driver(URI, neo4j.auth.basic(USER, PASSWORD));
 
-async function createConstraints() {
+async function createPerson(
+  tmdbId,
+  name,
+  born,
+  died,
+  bornIn,
+  url,
+  imdbId,
+  bio,
+  poster
+) {
   const session = driver.session();
   try {
-    await session.run(`
-      CREATE CONSTRAINT user_id_unique IF NOT EXISTS
-      FOR (u:User)
-      REQUIRE u.userid IS UNIQUE
-    `);
-
-    await session.run(`
-      CREATE CONSTRAINT movie_id_unique IF NOT EXISTS
-      FOR (m:Movie)
-      REQUIRE m.movieid IS UNIQUE
-    `);
+    await session.run(
+      `
+      MERGE (p:Person {tmdbId: $tmdbId})
+      SET p.name = $name,
+          p.born = datetime($born),
+          p.died = datetime($died),
+          p.bornIn = $bornIn,
+          p.url = $url,
+          p.imdbId = $imdbId,
+          p.bio = $bio,
+          p.poster = $poster
+      RETURN p
+      `,
+      {
+        tmdbId,
+        name,
+        born,
+        died,
+        bornIn,
+        url,
+        imdbId,
+        bio,
+        poster,
+      }
+    );
+    console.log(`Person creada: ${name}`);
   } finally {
     await session.close();
   }
 }
 
-// Crear usuario
-async function createUser(userid, name) {
+async function createMovie(
+  movieId,
+  title,
+  tmdbId,
+  released,
+  imdbRating,
+  year,
+  imdbId,
+  runtime,
+  countries,
+  imdbVotes,
+  url,
+  revenue,
+  plot,
+  poster,
+  budget,
+  languages
+) {
   const session = driver.session();
   try {
     await session.run(
       `
-      MERGE (u:User {userid: $userid})
+      MERGE (m:Movie {movieId: $movieId})
+      SET m.title = $title,
+          m.tmdbId = $tmdbId,
+          m.released = datetime($released),
+          m.imdbRating = $imdbRating,
+          m.year = $year,
+          m.imdbId = $imdbId,
+          m.runtime = $runtime,
+          m.countries = $countries,
+          m.imdbVotes = $imdbVotes,
+          m.url = $url,
+          m.revenue = $revenue,
+          m.plot = $plot,
+          m.poster = $poster,
+          m.budget = $budget,
+          m.languages = $languages
+      RETURN m
+      `,
+      {
+        movieId,
+        title,
+        tmdbId,
+        released,
+        imdbRating,
+        year,
+        imdbId,
+        runtime,
+        countries,
+        imdbVotes,
+        url,
+        revenue,
+        plot,
+        poster,
+        budget,
+        languages,
+      }
+    );
+    console.log(`Movie creada: ${title}`);
+  } finally {
+    await session.close();
+  }
+}
+
+async function createGenre(name) {
+  const session = driver.session();
+  try {
+    await session.run(
+      `
+      MERGE (g:Genre {name: $name})
+      RETURN g
+      `,
+      { name }
+    );
+    console.log(`Genre creado: ${name}`);
+  } finally {
+    await session.close();
+  }
+}
+
+async function createUser(userId, name) {
+  const session = driver.session();
+  try {
+    await session.run(
+      `
+      MERGE (u:User {userId: $userId})
       SET u.name = $name
       RETURN u
       `,
-      { userid, name }
+      { userId, name }
     );
-    console.log(`Usuario creado: ${name}`);
+    console.log(`User creado: ${name}`);
   } finally {
     await session.close();
   }
 }
 
-// Crear película
-async function createMovie(movieid, title, year) {
+async function actedIn(personId, movieId, role) {
   const session = driver.session();
   try {
     await session.run(
       `
-      MERGE (m:Movie {movieid: $movieid})
-      SET m.title = $title,
-          m.year = $year
-      RETURN m
+      MATCH (p:Person {tmdbId: $personId})
+      MATCH (m:Movie {movieId: $movieId})
+      MERGE (p)-[r:ACTED_IN]->(m)
+      SET r.role = $role
       `,
-      { movieid, title, year }
+      { personId, movieId, role }
     );
-    console.log(`Película creada: ${title}`);
   } finally {
     await session.close();
   }
 }
 
-async function createRated(userid, movieid, rating, timestamp) {
+async function directed(personId, movieId, role) {
   const session = driver.session();
   try {
     await session.run(
       `
-      MATCH (u:User {userid: $userid})
-      MATCH (m:Movie {movieid: $movieid})
+      MATCH (p:Person {tmdbId: $personId})
+      MATCH (m:Movie {movieId: $movieId})
+      MERGE (p)-[r:DIRECTED]->(m)
+      SET r.role = $role
+      `,
+      { personId, movieId, role }
+    );
+  } finally {
+    await session.close();
+  }
+}
+
+async function inGenre(movieId, genreName) {
+  const session = driver.session();
+  try {
+    await session.run(
+      `
+      MATCH (m:Movie {movieId: $movieId})
+      MATCH (g:Genre {name: $genreName})
+      MERGE (m)-[:IN_GENRE]->(g)
+      `,
+      { movieId, genreName }
+    );
+  } finally {
+    await session.close();
+  }
+}
+
+async function rated(userId, movieId, rating) {
+  const session = driver.session();
+  try {
+    await session.run(
+      `
+      MATCH (u:User {userId: $userId})
+      MATCH (m:Movie {movieId: $movieId})
       MERGE (u)-[r:RATED]->(m)
       SET r.rating = $rating,
-          r.timestamp = $timestamp
-      RETURN r
+          r.timestamp = timestamp()
       `,
-      { userid, movieid, rating, timestamp }
+      { userId, movieId, rating }
     );
-    console.log(`Rating creado: User ${userid} -> Movie ${movieid}`);
   } finally {
     await session.close();
   }
 }
 
-// Buscar usuario
-async function getUser(userid) {
+async function getUser(userId) {
   const session = driver.session();
   try {
     const result = await session.run(
       `
-      MATCH (u:User {userid: $userid})
+      MATCH (u:User {userId: $userId})
       RETURN u
       `,
-      { userid }
+      { userId }
     );
 
     console.log("\nUsuario encontrado:");
@@ -103,16 +236,15 @@ async function getUser(userid) {
   }
 }
 
-// Buscar película
-async function getMovie(movieid) {
+async function getMovie(movieId) {
   const session = driver.session();
   try {
     const result = await session.run(
       `
-      MATCH (m:Movie {movieid: $movieid})
+      MATCH (m:Movie {movieId: $movieId})
       RETURN m
       `,
-      { movieid }
+      { movieId }
     );
 
     console.log("\nPelícula encontrada:");
@@ -124,30 +256,24 @@ async function getMovie(movieid) {
   }
 }
 
-// Buscar usuario con sus ratings
-async function getUserRatings(userid) {
+async function getUserRatings(userId) {
   const session = driver.session();
   try {
     const result = await session.run(
       `
-      MATCH (u:User {userid: $userid})-[r:RATED]->(m:Movie)
+      MATCH (u:User {userId: $userId})-[r:RATED]->(m:Movie)
       RETURN u, r, m
       `,
-      { userid }
+      { userId }
     );
 
     console.log("\nRatings del usuario:");
-
     result.records.forEach(record => {
       const user = record.get("u").properties;
       const movie = record.get("m").properties;
       const rating = record.get("r").properties;
 
-      console.log({
-        user,
-        movie,
-        rating
-      });
+      console.log({ user, movie, rating });
     });
   } finally {
     await session.close();
@@ -156,51 +282,84 @@ async function getUserRatings(userid) {
 
 async function main() {
   try {
-    await createConstraints();
+    await createPerson(
+      1,
+      "Leonardo DiCaprio",
+      "1974-11-11T00:00:00",
+      null,
+      "USA",
+      "https://example.com/leo",
+      1001,
+      "Actor famoso",
+      "https://example.com/poster1.jpg"
+    );
 
-    // Crear usuarios
-    await createUser(1, "Ana");
-    await createUser(2, "Luis");
-    await createUser(3, "Carlos");
-    await createUser(4, "María");
-    await createUser(5, "Sofía");
+    await createPerson(
+      2,
+      "Christopher Nolan",
+      "1970-07-30T00:00:00",
+      null,
+      "UK",
+      "https://example.com/nolan",
+      1002,
+      "Director reconocido",
+      "https://example.com/poster2.jpg"
+    );
 
-    // Crear películas
-    await createMovie(101, "Inception", 2010);
-    await createMovie(102, "The Matrix", 1999);
-    await createMovie(103, "Interstellar", 2014);
-    await createMovie(104, "Titanic", 1997);
-    await createMovie(105, "Avatar", 2009);
+    await createPerson(
+      3,
+      "Joseph Gordon-Levitt",
+      "1981-02-17T00:00:00",
+      null,
+      "USA",
+      "https://example.com/joseph",
+      1003,
+      "Actor secundario",
+      "https://example.com/poster3.jpg"
+    );
 
-    const now = Date.now();
+    await createMovie(
+      500,
+      "Dream Heist",
+      9001,
+      "2025-01-01T00:00:00",
+      8.7,
+      2025,
+      2001,
+      130,
+      ["USA"],
+      100000,
+      "https://example.com/movie",
+      500000000,
+      "Un robo dentro de sueños",
+      "https://example.com/postermovie.jpg",
+      150000000,
+      ["English"]
+    );
 
-    // Relaciones
-    await createRated(1, 101, 5, now);
-    await createRated(1, 102, 4, now);
+    await createGenre("Sci-Fi");
+    await createGenre("Action");
 
-    await createRated(2, 101, 4, now);
-    await createRated(2, 103, 5, now);
+    await createUser(900, "Estuardo");
 
-    await createRated(3, 102, 5, now);
-    await createRated(3, 104, 3, now);
+    await actedIn(1, 500, "Cobb");
+    await actedIn(3, 500, "Arthur");
 
-    await createRated(4, 103, 4, now);
-    await createRated(4, 105, 5, now);
+    await directed(2, 500, "Director");
 
-    await createRated(5, 104, 5, now);
-    await createRated(5, 101, 4, now);
+    await inGenre(500, "Sci-Fi");
+    await inGenre(500, "Action");
 
-    console.log("\nGrafo poblado correctamente");
+    await rated(900, 500, 5);
 
-    // Pruebas rápidas de la búsqueda
-    console.log("\n--- PRUEBAS DE BÚSQUEDA ---");
+    console.log("Grafo creado correctamente");
 
-    await getUser(1);
-    await getMovie(101);
-    await getUserRatings(1);
+    await getUser(900);
+    await getMovie(500);
+    await getUserRatings(900);
 
   } catch (error) {
-    console.error("Error:", error);
+    console.error(error);
   } finally {
     await driver.close();
   }
